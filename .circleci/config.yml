@@ -1,0 +1,10 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: cirrusci/flutter
+    steps:
+      - checkout
+      - run: flutter packages get
+      - run: flutter packages pub run build_runner build
+      - run: flutter test
