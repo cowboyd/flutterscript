@@ -1,5 +1,7 @@
 # flutterscript
 
+[![CircleCI](https://circleci.com/gh/cowboyd/flutterscript.svg?style=shield)](https://circleci.com/gh/cowboyd/flutterscript)
+
 An embeddable interpreter for Flutter applications
 
 ## Getting Started
