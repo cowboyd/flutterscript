@@ -1,8 +1,4 @@
-library flutterscript.reflector;
-// @GlobalQuantifyCapability(
-//     r"^test_reflectable.test.global_quantify_test.(A|B)$", reflector)
 import "package:reflectable/reflectable.dart";
-// import "reflector.reflectable.dart";
 
 class Reflector extends Reflectable {
   const Reflector() : super(newInstanceCapability, invokingCapability);
