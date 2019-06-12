@@ -43,6 +43,10 @@ class DartArguments {
       this.named = names.map((key, value) => MapEntry<Symbol, Object>(Symbol(key), value)).cast<Symbol, Object>();
     }
   }
+
+  String toString() {
+    return "DartArguments(${this.positional}, ${this.named})";
+  }
 }
 
 
@@ -52,7 +56,12 @@ class FlutterScript {
 
   static Future<FlutterScript> create() async {
     Interp lisp = await makeInterp();
-    return FlutterScript(lisp);
+    FlutterScript interpreter = FlutterScript(lisp);
+    await interpreter.eval("""
+(defmacro -> (invocant name &rest args)
+`(dart/methodcall ,invocant (quote ,name) (dart/parameters ,@args)))
+""");
+    return interpreter;
   }
 
   FlutterScript(this.lisp) {
@@ -77,10 +86,9 @@ class FlutterScript {
     lisp.def("dart/methodcall", 3, (List arguments) {
       Object invocant = arguments.first;
       String methodName = arguments[1].toString();
-
       DartArguments args = arguments[2];
 
-      var mirror = reflector.reflect(invocant);
+      InstanceMirror mirror = reflector.reflect(invocant);
 
       return mirror.invoke(methodName, args.positional, args.named);
     });

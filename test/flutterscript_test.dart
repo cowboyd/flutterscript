@@ -62,16 +62,11 @@ void main() {
       expect(await eval("(dart/methodcall app 'withOptionalPositionalParameters (dart/arguments (List 1 2) (Map)))"), equals([1, 2]));
     });
 
-    test("can call methods with optional positional parameters using dart-like syntax", () async {
-    });
-
     test("can call methods with optional named parameters", () async {
       expect(await eval('(dart/methodcall app \'withOptionalNamedParameters (dart/arguments (List 1) (Map "two" 2)))'),
           equals({"one": 1, "two": 2}));
     });
 
-    test("can call methods with optional named parameters using friendly dart-like syntax", () async {
-    });
 
     test("can get fields from an object", () async {
       expect(await eval("(:: app 'title)"), equals("Flutter Demo"));
@@ -90,6 +85,16 @@ void main() {
       App app = await eval('app');
       expect(app.title, equals("Flutter Demo"));
       expect(app.theme, equals("Dark"));
+    });
+
+    test("can call methods with optional positional parameters using dart-like syntax", () async {
+      var result = await eval('(-> app withOptionalPositionalParameters 1 2)');
+      expect(result, equals([1, 2]));
+    });
+
+    test("can call methods with optional named parameters using friendly dart-like syntax", () async {
+      expect(await eval('(-> app withOptionalNamedParameters 1 two: 2)'),
+          equals({"one": 1, "two": 2}));
     });
   });
 }
