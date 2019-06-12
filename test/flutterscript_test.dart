@@ -3,48 +3,10 @@ import "package:flutter_test/flutter_test.dart";
 import "dart:convert";
 import "dart:async";
 import "../lib/lisp.dart";
+import "package:flutterscript/flutterscript.dart";
 import "package:flutterscript/reflector.dart";
 import "package:reflectable/reflectable.dart";
 import "flutterscript_test.reflectable.dart"; // Import generated code.
-
-abstract class DartFn {
-  Object invoke(DartArguments arguments);
-}
-
-class DartConstructor implements DartFn {
-  Type type;
-  String name;
-
-  DartConstructor(this.type, this.name);
-
-  Object invoke(DartArguments arguments) {
-    ClassMirror mirror = reflector.reflectType(this.type);
-    var instance = mirror.newInstance(this.name, arguments.positional, arguments.named);
-
-    return instance;
-  }
-}
-
-class DartArguments {
-  List<Object> positional;
-  Map<Symbol, Object> named;
-
-  DartArguments(List input) {
-    List<Object> positions = input.first;
-    Map<String, Object> names = input.last;
-
-    if (positions == null) {
-      this.positional = [];
-    } else {
-      this.positional = positions;
-    }
-    if (names == null) {
-      this.named = {};
-    } else {
-      this.named = names.map((key, value) => MapEntry<Symbol, Object>(Symbol(key), value)).cast<Symbol, Object>();
-    }
-  }
-}
 
 void main() {
   initializeReflectable();
@@ -76,7 +38,7 @@ void main() {
       return DartArguments(arguments);
     });
 
-    interp.globals[Sym("dart/parameters")] =  DartParameters();;
+    interp.globals[Sym("dart/parameters")] =  DartParameters();
 
     interp.def("dart/methodcall", 3, (List arguments) {
       Object invocant = arguments.first;
