@@ -9,8 +9,24 @@ An embeddable interpreter for Flutter applications
 ``` dart
 import "package:flutterscript/flutterscript.dart";
 
-Interpreter interperter = Interpreter();
-interpreter.eval('"Hello World "') //=> "Hello World"
+main() async {
+  FlutterScript interpreter = await FlutterScript.create();
+  await interpreter.eval('"Hello World"'); //> "Hello World"
+}
+```
+
+You can embed dart functions into the interpreter using the `defn`
+method:
+
+``` dart
+  await interpreter.defn("loud", new DartFn() {
+    invoke(DartArguments arguments) {
+      String input = arguments.positional.first.toString();
+      return "${input.toUpperCase()}!";
+    }
+  });
+
+  await interpreter.eval('(loud "Hello World")'); //> "HELLO WORLD!";
 ```
 
 ## Development
