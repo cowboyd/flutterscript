@@ -5,8 +5,12 @@ import "package:flutter/material.dart";
 // ignore:unused_import
 import "package:flutter/widgets.dart";
 
+// These two are fine.
 @GlobalQuantifyCapability(r"^dart.core.(List|Map)$", reflector)
 @GlobalQuantifyCapability(r".*\.(Text|Title)$", reflector)
+
+// this causes the builder to fail.
+@GlobalQuantifyCapability(r".*\.(MaterialApp)$", reflector)
 
 import "package:reflectable/reflectable.dart";
 import "reflector.reflectable.dart";
