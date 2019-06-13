@@ -19,24 +19,34 @@ You can embed dart functions into the interpreter using the `defn`
 method:
 
 ``` dart
-  await interpreter.defn("loud", new DartFn() {
-    invoke(DartArguments arguments) {
-      String input = arguments.positional.first.toString();
-      return "${input.toUpperCase()}!";
-    }
+  await interpreter.defn("loud", (DartArguments arguments) {
+    String input = arguments.positional.first.toString();
+    return "${input.toUpperCase()}!";
   });
 
   await interpreter.eval('(loud "Hello World")'); //> "HELLO WORLD!";
 ```
 
+To embed a _class_ into the interpreter, you use the `defClass` method
+where you give it a constructor function, and a list of methods on
+that class.
+
+``` dart
+  await interpreter.defClass("Text", (DartArguments args) => Text(args[0]), {
+    "data": (text, __) => text.data,
+    "toString": (text, __) => "Text(${text.data})"
+  })
+
+  await interpreter.eval('(setq text (Text "Hello World"))');
+  await interpreter.eval('(-> text data)') //> "Hello World";
+  await interpreter.eval('(-> text toString)') //> "Text(Hello World)";
+
+```
+
 ## Development
 
-FlutterScript requires you to build reflection stubs so that you can
-invoke Flutter classes and methods dynamically. To do this, you must
-manually invoke the build runner any time the set of embedable classes changes.
 
 ``` shell
 $ flutter packages get
-$ flutter packages pub run build_runner build
 $ flutter test
 ```

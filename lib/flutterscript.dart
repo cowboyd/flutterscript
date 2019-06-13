@@ -2,33 +2,20 @@ library flutterscript;
 
 import "dart:convert";
 import "dart:async";
-import "package:reflectable/reflectable.dart";
-import "reflector.dart";
 import "lisp.dart";
 
-initializeFlutterScript() {
-  initializeReflector();
-}
+typedef DartFn = Object Function(DartArguments arguments);
+typedef DartMethod = Object Function(dynamic invocant, DartArguments arguments);
 
-abstract class DartFn {
-  Object invoke(DartArguments arguments);
-}
-
-class DartConstructor implements DartFn {
-  Type type;
-  String name;
-
-  DartConstructor(this.type, this.name);
-
-  Object invoke(DartArguments arguments) {
-    ClassMirror mirror = reflector.reflectType(this.type);
-    return mirror.newInstance(this.name, arguments.positional, arguments.named);
-  }
+class DartClass {
+  DartFn constructor;
+  Map<String, DartMethod> methods;
+  DartClass(this.constructor, this.methods);
 }
 
 class DartArguments {
   List<Object> positional;
-  Map<Symbol, Object> named;
+  Map<String, Object> named;
 
   DartArguments(List input) {
     List<Object> positions = input.first;
@@ -42,7 +29,15 @@ class DartArguments {
     if (names == null) {
       this.named = {};
     } else {
-      this.named = names.map((key, value) => MapEntry<Symbol, Object>(Symbol(key), value)).cast<Symbol, Object>();
+      this.named = names;
+    }
+  }
+
+  operator [](Object key) {
+    if (key is Symbol || key is String) {
+      return named[key.toString()];
+    } else if (key is int) {
+      return positional[key];
     }
   }
 
@@ -55,24 +50,23 @@ class DartArguments {
 class FlutterScript {
   Interp lisp;
   Map<String, DartFn> fns;
+  Map<Type, Map<String, DartMethod>> methodsOf;
 
   static Future<FlutterScript> create() async {
     Interp lisp = await makeInterp();
     FlutterScript interpreter = FlutterScript(lisp);
+
     await interpreter.eval("""
 (defmacro -> (invocant name &rest args)
   `(dart/methodcall ,invocant (quote ,name) (dart/parameters ,@args)))
 """);
 
-    await interpreter.eval("""
-(defmacro :: (invocant property-name)
-  `(dart/property-get ,invocant (quote ,property-name)))
-""");
     return interpreter;
   }
 
   FlutterScript(this.lisp) {
     fns = {};
+    methodsOf = {};
 
     lisp.globals[Sym("dart/parameters")] =  DartParameters();
 
@@ -88,24 +82,22 @@ class FlutterScript {
       }
       DartArguments args = arguments[1];
 
-      return fn.invoke(args);
+      return fn(args);
     });
+
     lisp.def("dart/methodcall", 3, (List arguments) {
       Object invocant = arguments.first;
+      Map<String, DartMethod> methods = methodsOf[invocant.runtimeType];
       String methodName = arguments[1].toString();
+
+      DartMethod method = methods[methodName];
+      if (method == null) {
+        throw new Exception("no such method `$methodName` on `$invocant`");
+      }
       DartArguments args = arguments[2];
-
-      InstanceMirror mirror = reflector.reflect(invocant);
-
-      return mirror.invoke(methodName, args.positional, args.named);
+      return method(invocant, args);
     });
-    lisp.def("dart/property-get", 2, (List arguments) {
-      Object invocant = arguments.first;
-      String propertyName = arguments[1].toString();
 
-      InstanceMirror mirror = reflector.reflect(invocant);
-      return mirror.invokeGetter(propertyName);
-    });
     lisp.def("List", -1, (List args) {
       List result = new List();
       for (var cell = args.first; cell != null; cell = cell.cdr) {
@@ -113,6 +105,7 @@ class FlutterScript {
       }
       return result;
     });
+
     lisp.def("Map", -1, (List args) {
       int index = 0;
       String key;
@@ -136,6 +129,26 @@ class FlutterScript {
 (defmacro $functionName (&rest args)
               `(dart/funcall \"$functionName\" (dart/parameters ,@args)))
         """);
+  }
+
+  defineType(Type type, Map<String, DartMethod> methods) {
+    if (methodsOf[type] == null) {
+      methodsOf[type] = methods;
+    }
+  }
+
+  addClass(String name, DartClass type) {
+    defineClass(name, type.constructor, type.methods);
+  }
+
+  defineClass(String name, DartFn constructor, Map<String, DartMethod> methods) {
+    defn(name, (DartArguments arguments) {
+      Object instance = constructor(arguments);
+
+      defineType(instance.runtimeType, methods);
+
+      return instance;
+    });
   }
 
   Future<Object> eval(String source) async {
