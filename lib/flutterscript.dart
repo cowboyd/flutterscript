@@ -10,17 +10,16 @@ initializeFlutterScript() {
   initializeReflector();
 }
 
-abstract class DartFn {
-  Object invoke(DartArguments arguments);
-}
+typedef DartFn = Object Function(DartArguments arguments);
 
-class DartConstructor implements DartFn {
+
+class DartConstructor {
   Type type;
   String name;
 
   DartConstructor(this.type, this.name);
 
-  Object invoke(DartArguments arguments) {
+  Object call(DartArguments arguments) {
     ClassMirror mirror = reflector.reflectType(this.type);
     return mirror.newInstance(this.name, arguments.positional, arguments.named);
   }
@@ -88,7 +87,7 @@ class FlutterScript {
       }
       DartArguments args = arguments[1];
 
-      return fn.invoke(args);
+      return fn(args);
     });
     lisp.def("dart/methodcall", 3, (List arguments) {
       Object invocant = arguments.first;
