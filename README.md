@@ -43,6 +43,25 @@ that class.
 
 ```
 
+## FlutterScript server
+
+You can embed a flutter script interpreter into an application and
+have it listen for requests on a port. Posting to this server will
+result execute the code and write the output to the response.
+
+``` dart
+import "package:flutterscript/server.dart"
+
+Future startServer(int port) async {
+  Server server = await Server.create(port);
+  return server.listen();
+}
+
+```
+
+The `Future` returned by `startServer` will complete when the server
+is shutdown or crashes.
+
 ## Development
 
 
