@@ -1,12 +1,9 @@
 import "package:flutter_test/flutter_test.dart";
 
 import "package:flutterscript/flutterscript.dart";
-import "package:flutterscript/reflector.dart";
 import "package:flutter/widgets.dart";
 
 void main() {
-
-  initializeFlutterScript();
 
   FlutterScript interp;
   var eval = (String source) async {
@@ -43,14 +40,13 @@ void main() {
 
 
     setUp(() async {
-      await interp.defn("App", new DartConstructor(App, ""));
+      await interp.addClass("App", appType);
 
       await eval('(setq app (dart/funcall "App" (dart/arguments (List) (Map "title" "Flutter Demo" "theme" "Dark"))))');
     });
 
     test("can create a new instance of an object with named parameters", () async {
       App app = await eval('app');
-      // expect(app, TypeMatcher<MaterialApp>());
       expect(app.title, equals("Flutter Demo"));
       expect(app.theme, equals("Dark"));
     });
@@ -70,16 +66,14 @@ void main() {
 
 
     test("can get fields from an object", () async {
-      expect(await eval("(dart/property-get app 'title)"), equals("Flutter Demo"));
-      expect(await eval("(dart/property-get app \"title\")"), equals("Flutter Demo"));
-      expect(await eval("(dart/property-get app 'theme)"), equals("Dark"));
-      expect(await eval("(dart/property-get app \"theme\")"), equals("Dark"));
+      expect(await eval("(dart/methodcall app 'title (dart/arguments (List) (Map)))"), equals("Flutter Demo"));
+      expect(await eval("(dart/methodcall app 'theme (dart/arguments (List) (Map)))"), equals("Dark"));
     });
   });
 
   group("Friendly Dart-like syntax inter-op", () {
     setUp(() async {
-      await interp.defn("App", new DartConstructor(App, ""));
+      await interp.addClass("App", appType);
 
       await eval('(setq app (App title: "Flutter Demo" theme: "Dark"))');
     });
@@ -99,17 +93,50 @@ void main() {
       expect(await eval('(-> app withOptionalNamedParameters 1 two: 2)'),
           equals({"one": 1, "two": 2}));
     });
+
+    test("can access properties with method access", () async {
+      expect(await eval('(-> app title)'), equals("Flutter Demo"));
+    });
   });
 
   group("Flutter inter-op", () {
     setUp(() async {
-      await interp.defn("Text", new DartConstructor(Text, ""));
+      await interp.defineClass("Text", (DartArguments args) => Text(args[0]), {
+        "data": (text, _) => text.data
+      });
     });
     test("can actually instantiate and call methods on flutter widgets",() async {
       Text text = await eval('(Text "hello world")');
-      String data = await eval('(:: (Text "hello world") data)');
+      String data = await eval('(-> (Text "hello world") data)');
       expect(text.data, equals("hello world"));
       expect(data, equals("hello world"));
     });
   });
 }
+
+class App {
+  String title;
+  String theme;
+
+  App({this.title, this.theme});
+
+  identityMethod(value) {
+    return value;
+  }
+
+  withOptionalPositionalParameters (one, [two]) {
+    return [one, two];
+  }
+
+  withOptionalNamedParameters(one, { two }) {
+    return {"one": one, "two": two };
+  }
+}
+
+DartClass appType = DartClass((DartArguments args) => App(title: args["title"], theme: args["theme"]), {
+  "title": (app, _) => app.title,
+  "theme": (app, _) => app.theme,
+  "identityMethod": (app, arguments) => app.identityMethod(arguments[0]),
+  "withOptionalPositionalParameters": (app, arguments) => app.withOptionalPositionalParameters(arguments[0], arguments[1]),
+  "withOptionalNamedParameters": (app, arguments) => app.withOptionalNamedParameters(arguments[0], two: arguments["two"])
+});

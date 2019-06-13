@@ -10,8 +10,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  reflectable: ">=2.0.8"
-  build_runner: any
 
 dev_dependencies:
   flutter_test:
