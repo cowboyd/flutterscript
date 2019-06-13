@@ -2,6 +2,7 @@ import "package:flutter_test/flutter_test.dart";
 
 import "package:flutterscript/flutterscript.dart";
 import "package:flutterscript/reflector.dart";
+import "package:reflectable/reflectable.dart";
 import "package:flutter/widgets.dart";
 
 void main() {

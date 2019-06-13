@@ -5,22 +5,24 @@ import "package:flutter/material.dart";
 // ignore:unused_import
 import "package:flutter/widgets.dart";
 
-@GlobalQuantifyCapability(r"^flutterscript.reflector.App$", reflector)
 @GlobalQuantifyCapability(r"^dart.core.(List|Map)$", reflector)
-@GlobalQuantifyCapability(r".*\.(Text)$", reflector)
-// @GlobalQuantifyCapability(r".*\.(FlatButton)$", reflector)
+@GlobalQuantifyCapability(r".*\.(Text|Title)$", reflector)
+
 import "package:reflectable/reflectable.dart";
 import "reflector.reflectable.dart";
 
 
 class Reflector extends Reflectable {
-  const Reflector() : super(invokingCapability, delegateCapability);
+  const Reflector() : super(invokingCapability);
 }
 
 
 const reflector = const Reflector();
 
-//@reflector
+
+// just an object with some methods and properties
+// to invoke and access during tests.
+@reflector
 class App {
   String title;
   String theme;

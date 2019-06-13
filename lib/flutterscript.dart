@@ -22,9 +22,7 @@ class DartConstructor implements DartFn {
 
   Object invoke(DartArguments arguments) {
     ClassMirror mirror = reflector.reflectType(this.type);
-    var instance = mirror.newInstance(this.name, arguments.positional, arguments.named);
-
-    return instance;
+    return mirror.newInstance(this.name, arguments.positional, arguments.named);
   }
 }
 
