@@ -2,10 +2,11 @@ import "package:flutter_test/flutter_test.dart";
 
 import "package:flutterscript/flutterscript.dart";
 import "package:flutterscript/reflector.dart";
-import "flutterscript_test.reflectable.dart"; // Import generated code.
+import "package:flutter/widgets.dart";
 
 void main() {
-  initializeReflectable();
+
+  initializeFlutterScript();
 
   FlutterScript interp;
   var eval = (String source) async {
@@ -95,6 +96,18 @@ void main() {
     test("can call methods with optional named parameters using friendly dart-like syntax", () async {
       expect(await eval('(-> app withOptionalNamedParameters 1 two: 2)'),
           equals({"one": 1, "two": 2}));
+    });
+  });
+
+  group("Flutter inter-op", () {
+    setUp(() async {
+      await interp.defn("Text", new DartConstructor(Text, ""));
+    });
+    test("can actually instantiate and call methods on flutter widgets",() async {
+      Text text = await eval('(Text "hello world")');
+      String data = await eval('(:: (Text "hello world") `data)');
+      expect(text.data, equals("hello world"));
+      expect(data, equals("hello world"));
     });
   });
 }

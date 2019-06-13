@@ -6,6 +6,10 @@ import "package:reflectable/reflectable.dart";
 import "reflector.dart";
 import "lisp.dart";
 
+initializeFlutterScript() {
+  initializeReflector();
+}
+
 abstract class DartFn {
   Object invoke(DartArguments arguments);
 }
