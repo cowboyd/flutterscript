@@ -6,5 +6,4 @@ jobs:
     steps:
       - checkout
       - run: flutter packages get
-      - run: flutter packages pub run build_runner build
       - run: flutter test
