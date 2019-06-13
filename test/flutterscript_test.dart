@@ -70,8 +70,10 @@ void main() {
 
 
     test("can get fields from an object", () async {
-      expect(await eval("(:: app 'title)"), equals("Flutter Demo"));
-      expect(await eval("(:: app 'theme)"), equals("Dark"));
+      expect(await eval("(dart/property-get app 'title)"), equals("Flutter Demo"));
+      expect(await eval("(dart/property-get app \"title\")"), equals("Flutter Demo"));
+      expect(await eval("(dart/property-get app 'theme)"), equals("Dark"));
+      expect(await eval("(dart/property-get app \"theme\")"), equals("Dark"));
     });
   });
 
@@ -105,7 +107,7 @@ void main() {
     });
     test("can actually instantiate and call methods on flutter widgets",() async {
       Text text = await eval('(Text "hello world")');
-      String data = await eval('(:: (Text "hello world") `data)');
+      String data = await eval('(:: (Text "hello world") data)');
       expect(text.data, equals("hello world"));
       expect(data, equals("hello world"));
     });

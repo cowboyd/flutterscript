@@ -61,7 +61,12 @@ class FlutterScript {
     FlutterScript interpreter = FlutterScript(lisp);
     await interpreter.eval("""
 (defmacro -> (invocant name &rest args)
-`(dart/methodcall ,invocant (quote ,name) (dart/parameters ,@args)))
+  `(dart/methodcall ,invocant (quote ,name) (dart/parameters ,@args)))
+""");
+
+    await interpreter.eval("""
+(defmacro :: (invocant property-name)
+  `(dart/property-get ,invocant (quote ,property-name)))
 """);
     return interpreter;
   }
@@ -94,9 +99,9 @@ class FlutterScript {
 
       return mirror.invoke(methodName, args.positional, args.named);
     });
-    lisp.def("::", 2, (List arguments) {
+    lisp.def("dart/property-get", 2, (List arguments) {
       Object invocant = arguments.first;
-      String  propertyName = arguments[1].name;
+      String propertyName = arguments[1].toString();
 
       InstanceMirror mirror = reflector.reflect(invocant);
       return mirror.invokeGetter(propertyName);
