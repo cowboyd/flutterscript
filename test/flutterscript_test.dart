@@ -112,6 +112,24 @@ void main() {
       expect(data, equals("hello world"));
     });
   });
+
+  group("FlutterScript inter-op", () {
+
+    test("allows flutterscript functions to be referenced and called from dart", () async {
+      FlutterScriptFn add = await eval('(flutterscript/function (lambda (x y) (+ x y)))');
+      expect(add([1, 2]), equals(3));
+    });
+
+    test("allows flutterscript functions to be defined with a nice syntax", () async {
+      FlutterScriptFn add = await eval('(=> (x y) (+ x y))');
+      expect(add([5, 5]), equals(10));
+    });
+
+    test("still lets you call dart-callable functions from flutterscript", () async {
+      var result = await eval('(let ((add (=> (x y) (+ x y)))) (add 40 2))');
+      expect(result, equals(42));
+    });
+  });
 }
 
 class App {

@@ -46,167 +46,196 @@ class DartArguments {
   }
 }
 
-
-class FlutterScript {
+class FlutterScriptFn extends Closure {
   Interp lisp;
-  Map<String, DartFn> fns;
-  Map<Type, Map<String, DartMethod>> methodsOf;
 
-  static Future<FlutterScript> create() async {
-    Interp lisp = await makeInterp();
-    FlutterScript interpreter = FlutterScript(lisp);
+  FlutterScriptFn(this.lisp, Closure lambda): super(lambda.carity, lambda.body, lambda.env);
 
-    await interpreter.eval("""
+  Object call(List<Object> arguments) {
+    Cell functionApplication = Cell(this, null);
+    Cell tail = functionApplication;
+    arguments.forEach((argument) {
+      tail.cdr = Cell(argument, null);
+      tail = tail.cdr;
+    });
+    return lisp.eval(functionApplication, null);
+  }
+}
+
+
+  class FlutterScript {
+    Interp lisp;
+    Map<String, DartFn> fns;
+    Map<Type, Map<String, DartMethod>> methodsOf;
+
+    static Future<FlutterScript> create() async {
+      Interp lisp = await makeInterp();
+      FlutterScript interpreter = FlutterScript(lisp);
+
+      await interpreter.eval("""
 (defmacro -> (invocant name &rest args)
   `(dart/methodcall ,invocant (quote ,name) (dart/parameters ,@args)))
 """);
 
-    return interpreter;
-  }
+      await interpreter.eval("""
+(defmacro => (args body)
+  `(flutterscript/function (lambda ,args ,body)))
+""");
+      return interpreter;
+    }
 
-  FlutterScript(this.lisp) {
-    fns = {};
-    methodsOf = {};
+    FlutterScript(this.lisp) {
+      fns = {};
+      methodsOf = {};
 
-    lisp.globals[Sym("dart/parameters")] =  DartParameters();
+      lisp.globals[Sym("dart/parameters")] =  DartParameters();
 
-    lisp.def("dart/arguments", 2, (List arguments) {
-      return DartArguments(arguments);
-    });
+      lisp.def("dart/arguments", 2, (List arguments) {
+        return DartArguments(arguments);
+      });
 
-    lisp.def("dart/funcall", 2, (List arguments) {
-      String functionName = arguments.first;
-      DartFn fn = fns[functionName];
-      if (fn == null) {
-        throw new Exception("void function: `$functionName`");
-      }
-      DartArguments args = arguments[1];
-
-      return fn(args);
-    });
-
-    lisp.def("dart/methodcall", 3, (List arguments) {
-      Object invocant = arguments.first;
-      Map<String, DartMethod> methods = methodsOf[invocant.runtimeType];
-      String methodName = arguments[1].toString();
-
-      DartMethod method = methods[methodName];
-      if (method == null) {
-        throw new Exception("no such method `$methodName` on `$invocant`");
-      }
-      DartArguments args = arguments[2];
-      return method(invocant, args);
-    });
-
-    lisp.def("List", -1, (List args) {
-      List result = new List();
-      for (var cell = args.first; cell != null; cell = cell.cdr) {
-        result.add(cell.car);
-      }
-      return result;
-    });
-
-    lisp.def("Map", -1, (List args) {
-      int index = 0;
-      String key;
-      List<MapEntry<String, Object>> entries = new List<MapEntry<String, Object>>();
-      for (var cell = args.first; cell != null; cell = cell.cdr) {
-        if (index % 2 == 0) {
-          key = cell.car;
-        } else {
-          entries.add(MapEntry(key.toString(), cell.car));
+      lisp.def("dart/funcall", 2, (List arguments) {
+        String functionName = arguments.first;
+        DartFn fn = fns[functionName];
+        if (fn == null) {
+          throw new Exception("void function: `$functionName`");
         }
-        index++;
-      }
-      return Map.fromEntries(entries);
-    });
-  }
+        DartArguments args = arguments[1];
+
+        return fn(args);
+      });
+
+      lisp.def("flutterscript/function", 1, (List arguments) {
+        var lambda = arguments.first;
+        if (lambda is Closure) {
+          return FlutterScriptFn(lisp, lambda);
+        } else {
+          throw new ArgumentError("argument to flutterscript/function must be a function, not `lambda`");
+        }
+      });
+
+      lisp.def("dart/methodcall", 3, (List arguments) {
+        Object invocant = arguments.first;
+        Map<String, DartMethod> methods = methodsOf[invocant.runtimeType];
+        String methodName = arguments[1].toString();
+
+        DartMethod method = methods[methodName];
+        if (method == null) {
+          throw new Exception("no such method `$methodName` on `$invocant`");
+        }
+        DartArguments args = arguments[2];
+        return method(invocant, args);
+      });
+
+      lisp.def("List", -1, (List args) {
+        List result = new List();
+        for (var cell = args.first; cell != null; cell = cell.cdr) {
+          result.add(cell.car);
+        }
+        return result;
+      });
+
+      lisp.def("Map", -1, (List args) {
+        int index = 0;
+        String key;
+        List<MapEntry<String, Object>> entries = new List<MapEntry<String, Object>>();
+        for (var cell = args.first; cell != null; cell = cell.cdr) {
+          if (index % 2 == 0) {
+            key = cell.car;
+          } else {
+            entries.add(MapEntry(key.toString(), cell.car));
+          }
+          index++;
+        }
+        return Map.fromEntries(entries);
+      });
+    }
 
 
-  defn(String functionName, DartFn function) async {
-    fns[functionName] = function;
-    return await eval("""
+    defn(String functionName, DartFn function) async {
+      fns[functionName] = function;
+      return await eval("""
 (defmacro $functionName (&rest args)
               `(dart/funcall \"$functionName\" (dart/parameters ,@args)))
         """);
-  }
+    }
 
-  defineType(Type type, Map<String, DartMethod> methods) {
-    if (methodsOf[type] == null) {
-      methodsOf[type] = methods;
+    defineType(Type type, Map<String, DartMethod> methods) {
+      if (methodsOf[type] == null) {
+        methodsOf[type] = methods;
+      }
+    }
+
+    addClass(String name, DartClass type) {
+      defineClass(name, type.constructor, type.methods);
+    }
+
+    defineClass(String name, DartFn constructor, Map<String, DartMethod> methods) {
+      defn(name, (DartArguments arguments) {
+        Object instance = constructor(arguments);
+
+        defineType(instance.runtimeType, methods);
+
+        return instance;
+      });
+    }
+
+    Future<Object> eval(String source) async {
+      Stream<String> input = Stream.fromFuture(Future(() => source));
+      input = input.transform(const LineSplitter());
+      var lines = new StreamIterator(input);
+      var reader = new Reader(lines);
+      var sExp = await reader.read();
+      return lisp.eval(sExp, null);
     }
   }
 
-  addClass(String name, DartClass type) {
-    defineClass(name, type.constructor, type.methods);
-  }
 
-  defineClass(String name, DartFn constructor, Map<String, DartMethod> methods) {
-    defn(name, (DartArguments arguments) {
-      Object instance = constructor(arguments);
+  class DartParameters extends Macro {
+    DartParameters(): super(-1, null);
 
-      defineType(instance.runtimeType, methods);
+    @override Cell expandWith(interpreter, Cell arg) {
+      Sym mapSym = Sym.table["Map"];
+      Sym listSym = Sym.table["List"];
+      Sym argumentsSym = Sym.table["dart/arguments"];
 
-      return instance;
-    });
-  }
+      List<dynamic> positional = new List();
+      List<MapEntry<Sym, dynamic>> named = new List();
+      Sym key = null;
 
-  Future<Object> eval(String source) async {
-    Stream<String> input = Stream.fromFuture(Future(() => source));
-    input = input.transform(const LineSplitter());
-    var lines = new StreamIterator(input);
-    var reader = new Reader(lines);
-    var sExp = await reader.read();
-    return lisp.eval(sExp, null);
-  }
-}
-
-
-class DartParameters extends Macro {
-  DartParameters(): super(-1, null);
-
-  @override Cell expandWith(interpreter, Cell arg) {
-    Sym mapSym = Sym.table["Map"];
-    Sym listSym = Sym.table["List"];
-    Sym argumentsSym = Sym.table["dart/arguments"];
-
-    List<dynamic> positional = new List();
-    List<MapEntry<Sym, dynamic>> named = new List();
-    Sym key = null;
-
-    foldl(arg, arg, (body, item) {
-      if (item is Sym && item.name.endsWith(":")) {
-        if (key != null) {
-          throw new Exception("expected value for key $key, but got another key: $item");
+      foldl(arg, arg, (body, item) {
+        if (item is Sym && item.name.endsWith(":")) {
+          if (key != null) {
+            throw new Exception("expected value for key $key, but got another key: $item");
+          } else {
+            key = item;
+          }
         } else {
-          key = item;
+          if (key != null) {
+            named.add(new MapEntry<Sym, dynamic>(key, item));
+            key = null;
+          } else {
+            positional.add(item);
+          }
         }
-      } else {
-        if (key != null) {
-          named.add(new MapEntry<Sym, dynamic>(key, item));
-          key = null;
-        } else {
-          positional.add(item);
-        }
-      }
-      return body;
-    });
+        return body;
+      });
 
-    Cell pbody = Cell(listSym, null);
-    Cell pcur = pbody;
-    positional.forEach((item) {
-      pcur.cdr = Cell(item, null);
-      pcur = pcur.cdr;
-    });
-    Cell nbody = Cell(mapSym, null);
-    Cell ncur = nbody;
-    named.forEach((entry) {
-      String keyName = entry.key.name;
+      Cell pbody = Cell(listSym, null);
+      Cell pcur = pbody;
+      positional.forEach((item) {
+        pcur.cdr = Cell(item, null);
+        pcur = pcur.cdr;
+      });
+      Cell nbody = Cell(mapSym, null);
+      Cell ncur = nbody;
+      named.forEach((entry) {
+        String keyName = entry.key.name;
 
-      ncur.cdr = Cell(keyName.substring(0, keyName.length - 1), Cell(entry.value, null));
-      ncur = ncur.cdr.cdr;
-    });
-    Cell result = Cell(argumentsSym, Cell(pbody, Cell(nbody, null)));
-    return result;
+        ncur.cdr = Cell(keyName.substring(0, keyName.length - 1), Cell(entry.value, null));
+        ncur = ncur.cdr.cdr;
+      });
+      Cell result = Cell(argumentsSym, Cell(pbody, Cell(nbody, null)));
+      return result;
+    }
   }
-}

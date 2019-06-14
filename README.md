@@ -40,7 +40,16 @@ that class.
   await interpreter.eval('(setq text (Text "Hello World"))');
   await interpreter.eval('(-> text data)') //> "Hello World";
   await interpreter.eval('(-> text toString)') //> "Text(Hello World)";
+```
 
+The door swings boths ways as well. Not only can you embed dart
+functions into FlutterScript and call them from FlutterScript code,
+but you can also bring FlutterScript functions into Dart and call them
+from Dart code:
+
+``` dart
+FlutterScriptFn add = await interpreter.eval('(=> (x y) (+ x y))');
+add([10, 7]); //=> 17
 ```
 
 ## Development
