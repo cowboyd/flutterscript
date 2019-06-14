@@ -152,7 +152,10 @@ class FlutterScript {
   }
 
   Future<Object> eval(String source) async {
-    Stream<String> input = Stream.fromFuture(Future(() => source));
+    return evalStream(Stream.fromFuture(Future(() => source)));
+  }
+
+  Future<Object> evalStream(Stream<String> input) async {
     input = input.transform(const LineSplitter());
     var lines = new StreamIterator(input);
     var reader = new Reader(lines);
