@@ -4,7 +4,7 @@
 
 An embeddable interpreter for Flutter applications
 
-![Demo of FlutterScript](https://user-images.githubusercontent.com/74687/59565540-fbd77500-9022-11e9-9bf7-6e4f94ad2bc3.gif)
+<img src="https://user-images.githubusercontent.com/74687/59565540-fbd77500-9022-11e9-9bf7-6e4f94ad2bc3.gif" width="500" alt="Demo of FlutterScript" />
 
 ## Getting Started
 
