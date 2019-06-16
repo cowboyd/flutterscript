@@ -4,6 +4,8 @@
 
 An embeddable interpreter for Flutter applications
 
+![Demo of FlutterScript](https://i.imgur.com/IVZwqaj.gifv)
+
 ## Getting Started
 
 ``` dart
