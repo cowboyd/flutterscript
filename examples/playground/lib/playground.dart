@@ -1,24 +1,21 @@
-import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import "package:flutterscript/flutterscript.dart";
 import "package:flutterscript/lisp.dart";
 
 import './builder.dart';
 import './interpreter.dart';
+import './examples.dart';
 
 class Playground extends StatefulWidget {
-  Playground({Key key, this.source = '(Text "Hello World")'}) : super(key: key);
-
-  final String source;
+  Playground({Key key}) : super(key: key);
 
   @override
-  _PlaygroundState createState() => _PlaygroundState(source: source);
+  _PlaygroundState createState() => _PlaygroundState(examples["Hello World"]);
 }
 
 class _PlaygroundState extends State<Playground> {
-  _PlaygroundState({this.source}) {
-    _sourceController = TextEditingController(text: source);
-    _urlController = TextEditingController();
+  _PlaygroundState(this._source) {
+    _sourceController = TextEditingController(text: _source);
 
     createInterpreter().then((i) {
       setState(() {
@@ -27,29 +24,27 @@ class _PlaygroundState extends State<Playground> {
     });
   }
 
-  String source;
+  String _source;
   FlutterScript _interpreter;
-  TextEditingController _urlController;
   TextEditingController _sourceController;
 
-  void _updateSourceFromInput() async {
+  void _updateSource(source) {
     setState(() {
-      source = sanitize(_sourceController.text);
+      _source = source;
     });
   }
 
-  Future _loadScript(String text) async {
-    if (text.isNotEmpty) {
-      final response = await http.get(text);
-
-      setState(() {
-        source = _sourceController.text = sanitize(response.body);
-      });
-    }
+  void _loadInput(source) {
+    _sourceController.text = source;
+    _updateSource(source);
   }
 
   @override
   Widget build(BuildContext context) {
+    String scriptSelection = examples.containsValue(_source)
+        ? examples.entries.firstWhere((entry) => entry.value == _source).value
+        : "Empty";
+
     return Scaffold(
       appBar: AppBar(
         title: Text('FlutterScript'),
@@ -60,10 +55,16 @@ class _PlaygroundState extends State<Playground> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            TextField(
-              controller: _urlController,
-              decoration: InputDecoration(hintText: 'Load script from a URL'),
-              onSubmitted: _loadScript,
+            DropdownButton<String>(
+              onChanged: _loadInput,
+              value: scriptSelection,
+              items: examples.keys.map<DropdownMenuItem<String>>((String name) {
+                String value = examples[name];
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(name),
+                );
+              }).toList(),
             ),
             Expanded(
               flex: 2,
@@ -73,39 +74,32 @@ class _PlaygroundState extends State<Playground> {
                 keyboardType: TextInputType.multiline,
                 maxLines: 100,
                 style: TextStyle(fontSize: 18.0),
+                onChanged: _updateSource,
               ),
             ),
             Expanded(
-              flex: 1,
-              child: InterpreterBuilder(
-                  _interpreter,
-                  builder: (BuildContext context, FlutterScript i) {
+                flex: 1,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 15),
+                  child: InterpreterBuilder(_interpreter,
+                      builder: (BuildContext context, FlutterScript i) {
                     return FutureBuilder(
-                        future: i.eval(source),
+                        future: i.eval(sanitize(_source)),
                         builder:
                             (BuildContext context, AsyncSnapshot snapshot) {
                           if (snapshot.hasError) {
                             return playerError(snapshot.error);
                           }
                           if (snapshot.hasData) {
-                            return player(snapshot.data);
+                            return player(snapshot.data,
+                                color: _sourceController.text == _source
+                                    ? Colors.grey[300]
+                                    : Colors.yellowAccent);
                           } else {
                             return player(Container());
                           }
                         });
                   }),
-            ),
-            Padding(
-                padding: const EdgeInsets.all(15),
-                child: RaisedButton(
-                  child: Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: Text(
-                        '✨ evaluate ✨',
-                        style: TextStyle(fontSize: 28),
-                      )),
-                  color: Colors.white,
-                  onPressed: _updateSourceFromInput,
                 )),
           ],
         ),
@@ -135,10 +129,11 @@ Widget playerError(EvalException error) {
           style: TextStyle(color: Colors.white, fontSize: 24.0)));
 }
 
-Widget player(Widget child) {
+Widget player(Widget child, {color}) {
   return Container(
-      padding: const EdgeInsets.all(8.0),
-      color: Colors.grey[300],
-      alignment: Alignment.center,
-      child: child);
+    padding: const EdgeInsets.all(8.0),
+    color: color,
+    alignment: Alignment.center,
+    child: child,
+  );
 }
